@@ -1,0 +1,109 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+
+// ---------------- PIN DEFINITIONS ----------------
+#define DHTPIN 2
+#define DHTTYPE DHT11
+
+#define FAN_PIN 9
+
+// ---------------- OBJECTS ----------------
+DHT dht(DHTPIN, DHTTYPE);
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ---------------- VARIABLES ----------------
+float temperature;
+int fanSpeed;
+
+void setup()
+{
+  Serial.begin(9600);
+
+  // Initialize DHT Sensor
+  dht.begin();
+
+  // Initialize LCD
+  lcd.init();
+  lcd.backlight();
+
+  // Set Fan Pin as Output
+  pinMode(FAN_PIN, OUTPUT);
+
+  lcd.setCursor(0, 0);
+  lcd.print("Automatic Fan");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Control System");
+
+  delay(2000);
+  lcd.clear();
+}
+
+void loop()
+{
+  // Read Temperature
+  temperature = dht.readTemperature();
+
+  // Check Sensor Reading
+  if (isnan(temperature))
+  {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+
+  // ---------------- FAN SPEED CONTROL ----------------
+
+  // Temperature below 25°C
+  if (temperature < 25)
+  {
+    fanSpeed = 0;
+  }
+
+  // Temperature between 25°C and 30°C
+  else if (temperature >= 25 && temperature < 30)
+  {
+    fanSpeed = 100;
+  }
+
+  // Temperature between 30°C and 35°C
+  else if (temperature >= 30 && temperature < 35)
+  {
+    fanSpeed = 180;
+  }
+
+  // Temperature above 35°C
+  else
+  {
+    fanSpeed = 255;
+  }
+
+  // Apply PWM Signal to Fan
+  analogWrite(FAN_PIN, fanSpeed);
+
+  // ---------------- SERIAL MONITOR ----------------
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.println(" °C");
+
+  Serial.print("Fan Speed PWM: ");
+  Serial.println(fanSpeed);
+
+  // ---------------- LCD DISPLAY ----------------
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Temp: ");
+  lcd.print(temperature);
+  lcd.print((char)223);
+  lcd.print("C");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Fan Speed: ");
+
+  int speedPercent = map(fanSpeed, 0, 255, 0, 100);
+  lcd.print(speedPercent);
+  lcd.print("%");
+
+  delay(2000);
+}
